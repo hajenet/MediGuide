@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>간호학과 의학용어 퀴즈 (순환기계)</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --success-color: #27ae60;
+            --error-color: #e74c3c;
+            --bg-color: #f4f7f6;
+        }
+
+        body {
+            font-family: 'Pretendard', sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        #app {
+            background: white;
+            width: 90%;
+            max-width: 500px;
+            padding: 2rem;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+
+        .hidden { display: none; }
+
+        h1 { color: var(--primary-color); font-size: 1.5rem; text-align: center; }
+
+        .card {
+            border: 2px solid #eee;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            cursor: pointer;
+            transition: transform 0.3s;
+            text-align: center;
+            background: #fff;
+        }
+
+        .card:active { transform: scale(0.98); }
+
+        .option-btn {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: white;
+            cursor: pointer;
+            text-align: left;
+            font-size: 1rem;
+        }
+
+        .option-btn:hover { background: #f0f8ff; }
+
+        .correct { background: var(--success-color) !important; color: white; }
+        .wrong { background: var(--error-color) !important; color: white; }
+
+        .btn {
+            background: var(--secondary-color);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        #progress { margin-bottom: 10px; font-size: 0.9rem; color: #666; }
+        
+        /* 암호화 섹션 스타일 */
+        #auth-section { text-align: center; }
+        input[type="password"] {
+            padding: 10px;
+            width: 80%;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+
+<div id="app">
+    <div id="auth-section">
+        <h3>데이터 보호</h3>
+        <p>비밀번호를 입력하세요.<br>(미설정 시 바로 입장)</p>
+        <input type="password" id="pw-input" placeholder="Password">
+        <button class="btn" onclick="checkAuth()">입장하기</button>
+    </div>
+
+    <div id="quiz-section" class="hidden">
+        <div id="progress"></div>
+        <h2 id="question">질문이 여기에 표시됩니다.</h2>
+        <div id="options"></div>
+        <div id="feedback" style="margin-top: 15px; font-weight: bold;"></div>
+        <button id="next-btn" class="btn hidden" onclick="loadNextQuestion()">다음 문제</button>
+    </div>
+
+    <div id="result-section" class="hidden">
+        <h2>학습 완료</h2>
+        <p id="score-display"></p>
+        <div id="wrong-notes">
+            <h3>오답 정리 (국시 대비)</h3>
+            <div id="wrong-list"></div>
+        </div>
+        <button class="btn" onclick="location.reload()">다시 시작</button>
+    </div>
+</div>
+
+<script>
+    // 퀴즈 데이터 (순환기계 및 진료과)
+    const quizData = [
+        { q: "순환기 내과를 지칭하는 약어는?", a: ["CV", "GS", "NS", "OS"], c: 0, r: "CV는 Cardiovascular의 약자로, 심장과 혈관계 질환을 다루는 내과입니다." },
+        { q: "흉부외과(심장혈관흉부외과) 약어는?", a: ["PS", "CS", "ENT", "EY"], c: 1, r: "CS는 Chest Surgery의 약자로, 심장·폐·대혈관 수술을 담당합니다." },
+        { q: "심전도를 뜻하는 약어는?", a: ["EEG", "EMG", "EKG", "ECHO"], c: 2, r: "EKG(또는 ECG)는 Electrocardiogram의 약자로, 심장의 전기 활동을 기록합니다." },
+        { q: "급성 심근경색증 약어는?", a: ["CHF", "AMI", "ASD", "VSD"], c: 1, r: "AMI는 Acute Myocardial Infarction의 약자로, 관상동맥 폐색으로 심근이 괴사되는 응급 질환입니다." },
+        { q: "관상동맥 질환 약어는?", a: ["CAD", "COPD", "CVA", "HTN"], c: 0, r: "CAD는 Coronary Artery Disease의 약자로, 관상동맥 협착·폐색으로 인한 심장 질환입니다." },
+        { q: "심방세동 약어는?", a: ["VF", "AF", "APC", "PVC"], c: 1, r: "AF는 Atrial Fibrillation의 약자로, 심방이 불규칙하게 수축하는 부정맥입니다." },
+        { q: "관상동맥 우회술 약어는?", a: ["PTCA", "CABG", "PCI", "ECHO"], c: 1, r: "CABG는 Coronary Artery Bypass Graft의 약자로, 막힌 관상동맥을 우회하는 수술입니다." },
+        { q: "고혈압 약어는?", a: ["DM", "HTN", "BP", "AR"], c: 1, r: "HTN은 Hypertension의 약자로, 수축기 혈압 ≥140mmHg 또는 이완기 ≥90mmHg인 상태입니다." },
+        { q: "당뇨병 약어는?", a: ["HTN", "DM", "TB", "CVA"], c: 1, r: "DM은 Diabetes Mellitus의 약자로, 인슐린 분비 이상 또는 저항성으로 혈당이 높아지는 만성 질환입니다." },
+        { q: "뇌혈관 사고(뇌졸중) 약어는?", a: ["TIA", "ICP", "CVA", "LOC"], c: 2, r: "CVA는 Cerebrovascular Accident의 약자로, 뇌혈관 폐색(허혈성) 또는 파열(출혈성)로 발생합니다." },
+        { q: "만성 폐쇄성 폐질환 약어는?", a: ["ARDS", "CHF", "TB", "COPD"], c: 3, r: "COPD는 Chronic Obstructive Pulmonary Disease의 약자로, 기도가 점진적으로 좁아지는 만성 폐질환입니다." },
+        { q: "폐렴 약어는?", a: ["PE", "PNA", "PPH", "PVD"], c: 1, r: "PNA는 Pneumonia의 약자로, 폐포에 염증이 생기는 감염성 질환입니다." },
+        { q: "급성 신부전 약어는?", a: ["ARF", "CRF", "UTI", "BPH"], c: 0, r: "ARF는 Acute Renal Failure의 약자로, 신장 기능이 갑자기 저하되어 노폐물 배출이 안 되는 상태입니다." },
+        { q: "활력징후 약어는?", a: ["NVS", "V/S", "GCS", "ICP"], c: 1, r: "V/S는 Vital Signs의 약자로, 체온·맥박·호흡·혈압의 4가지를 기본으로 측정합니다." },
+        { q: "금식(입으로 아무것도 먹지 않음) 약어는?", a: ["TPN", "PO", "NPO", "NG"], c: 2, r: "NPO는 라틴어 Nihil Per Os(= Nothing Per Os)의 약자로, 수술 전 또는 검사 전 금식 지시에 사용됩니다." },
+        { q: "중환자실 약어는?", a: ["CCU", "ICU", "RCU", "PCU"], c: 1, r: "ICU는 Intensive Care Unit의 약자로, 중증 환자를 24시간 집중 모니터링·치료하는 병동입니다." },
+        { q: "심폐소생술 약어는?", a: ["AED", "BLS", "CPR", "ACLS"], c: 2, r: "CPR은 Cardiopulmonary Resuscitation의 약자로, 심정지 환자에게 흉부 압박과 인공호흡을 시행하는 응급처치입니다." },
+        { q: "요로 감염 약어는?", a: ["ARF", "BPH", "STI", "UTI"], c: 3, r: "UTI는 Urinary Tract Infection의 약자로, 방광·요도·신장 등 요로에 세균이 감염된 상태입니다." }
+    ];
+
+    let currentIdx = 0;
+    let score = 0;
+    let wrongAnswers = [];
+    let savedPw = localStorage.getItem('quiz_pw') || "";
+
+    function checkAuth() {
+        const inputPw = document.getElementById('pw-input').value;
+        if (savedPw === "" || inputPw === savedPw) {
+            if (savedPw === "" && inputPw !== "") {
+                if(confirm("이 비밀번호를 앞으로 사용할까요?")) {
+                    localStorage.setItem('quiz_pw', inputPw);
+                }
+            }
+            document.getElementById('auth-section').classList.add('hidden');
+            document.getElementById('quiz-section').classList.remove('hidden');
+            initQuiz();
+        } else {
+            alert("비밀번호가 틀렸습니다.");
+        }
+    }
+
+    function initQuiz() {
+        currentIdx = 0;
+        score = 0;
+        wrongAnswers = [];
+        loadNextQuestion();
+    }
+
+    function loadNextQuestion() {
+        if (currentIdx >= quizData.length) {
+            showResults();
+            return;
+        }
+
+        const q = quizData[currentIdx];
+        document.getElementById('progress').innerText = `문제 ${currentIdx + 1} / ${quizData.length}`;
+        document.getElementById('question').innerText = q.q;
+        document.getElementById('feedback').innerText = "";
+        document.getElementById('next-btn').classList.add('hidden');
+        
+        const optionsDiv = document.getElementById('options');
+        optionsDiv.innerHTML = "";
+        
+        q.a.forEach((opt, i) => {
+            const btn = document.createElement('button');
+            btn.className = 'option-btn';
+            btn.innerText = opt;
+            btn.onclick = () => checkAnswer(i);
+            optionsDiv.appendChild(btn);
+        });
+    }
+
+    function checkAnswer(selectedIdx) {
+        const q = quizData[currentIdx];
+        const buttons = document.querySelectorAll('.option-btn');
+        
+        buttons.forEach(btn => btn.disabled = true);
+
+        if (selectedIdx === q.c) {
+            buttons[selectedIdx].classList.add('correct');
+            document.getElementById('feedback').innerHTML =
+                `<span style="color:var(--success-color)">정답입니다!</span><br>
+                 <small style="color:#555">${q.r}</small>`;
+            score++;
+        } else {
+            buttons[selectedIdx].classList.add('wrong');
+            buttons[q.c].classList.add('correct');
+            document.getElementById('feedback').innerHTML =
+                `<span style="color:var(--error-color)">오답입니다.</span><br>
+                 <small style="color:#555">${q.r}</small>`;
+            wrongAnswers.push({ q: q.q, correct: q.a[q.c], rationale: q.r });
+        }
+
+        document.getElementById('next-btn').classList.remove('hidden');
+        currentIdx++;
+    }
+
+    function showResults() {
+        document.getElementById('quiz-section').classList.add('hidden');
+        document.getElementById('result-section').classList.remove('hidden');
+        document.getElementById('score-display').innerText = `${quizData.length}문제 중 ${score}문제를 맞혔습니다.`;
+
+        const wrongList = document.getElementById('wrong-list');
+        wrongList.innerHTML = "";
+        
+        if (wrongAnswers.length === 0) {
+            wrongList.innerHTML = "<p>모든 문제를 맞히셨습니다! 완벽해요.</p>";
+        } else {
+            wrongAnswers.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'card';
+                div.style.textAlign = 'left';
+                div.innerHTML = `<strong>질문:</strong> ${item.q}<br>
+                                 <strong>정답:</strong> ${item.correct}<br>
+                                 <small style="color:blue">${item.rationale}</small>`;
+                wrongList.appendChild(div);
+            });
+        }
+    }
+</script>
+
+</body>
+</html>
