@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>간호학과 의학용어 퀴즈</title>
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --success-color: #27ae60;
+            --error-color: #e74c3c;
+            --bg-color: #f4f7f6;
+        }
+
+        body {
+            font-family: 'Pretendard', sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            padding: 20px 0;
+            box-sizing: border-box;
+        }
+
+        #app {
+            background: white;
+            width: 90%;
+            max-width: 540px;
+            padding: 2rem;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+
+        .hidden { display: none; }
+
+        h1 { color: var(--primary-color); font-size: 1.5rem; text-align: center; margin-bottom: 0.3rem; }
+        h2 { color: var(--primary-color); }
+
+        .subtitle { text-align: center; color: #888; font-size: 0.9rem; margin-bottom: 1.5rem; }
+
+        /* 계통 선택 */
+        .system-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .system-card {
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 16px 10px;
+            cursor: pointer;
+            text-align: center;
+            background: #fff;
+            transition: border-color 0.2s, background 0.2s, transform 0.15s;
+        }
+
+        .system-card:hover {
+            border-color: var(--secondary-color);
+            background: #f0f8ff;
+            transform: translateY(-2px);
+        }
+
+        .system-card:active { transform: scale(0.97); }
+
+        .system-card .sys-name {
+            font-size: 1rem;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+
+        .system-card .sys-count {
+            font-size: 0.8rem;
+            color: #999;
+            margin-top: 4px;
+        }
+
+        .system-card-all {
+            grid-column: 1 / -1;
+            background: var(--secondary-color);
+            border-color: var(--secondary-color);
+            color: white;
+        }
+
+        .system-card-all:hover {
+            background: #2980b9;
+            border-color: #2980b9;
+        }
+
+        .system-card-all .sys-name { color: white; }
+        .system-card-all .sys-count { color: #d0eaff; }
+
+        /* 퀴즈 */
+        .card {
+            border: 2px solid #eee;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            cursor: pointer;
+            transition: transform 0.3s;
+            text-align: center;
+            background: #fff;
+        }
+
+        .card:active { transform: scale(0.98); }
+
+        .option-btn {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: white;
+            cursor: pointer;
+            text-align: left;
+            font-size: 1rem;
+            box-sizing: border-box;
+        }
+
+        .option-btn:hover { background: #f0f8ff; }
+        .correct { background: var(--success-color) !important; color: white; }
+        .wrong   { background: var(--error-color)   !important; color: white; }
+
+        .btn {
+            background: var(--secondary-color);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 10px;
+            font-size: 1rem;
+        }
+
+        .btn:hover { background: #2980b9; }
+
+        .btn-tts {
+            display: inline-block;
+            background: none;
+            border: 1px solid var(--secondary-color);
+            color: var(--secondary-color);
+            border-radius: 20px;
+            padding: 4px 14px;
+            font-size: 0.82rem;
+            cursor: pointer;
+            margin-top: 8px;
+        }
+        .btn-tts:hover { background: #f0f8ff; }
+
+        .btn-outline {
+            background: white;
+            color: var(--secondary-color);
+            border: 2px solid var(--secondary-color);
+        }
+
+        .btn-outline:hover { background: #f0f8ff; }
+
+        #progress { margin-bottom: 10px; font-size: 0.9rem; color: #666; }
+        #current-system-label { font-size: 0.85rem; color: var(--secondary-color); font-weight: bold; margin-bottom: 4px; }
+
+        /* 결과 */
+        #wrong-notes .card { cursor: default; }
+        #wrong-notes .card:active { transform: none; }
+    </style>
+</head>
+<body>
+
+<div id="app">
+    <!-- 계통 선택 -->
+    <div id="system-section">
+        <h1>의학용어 퀴즈</h1>
+        <p class="subtitle">학습할 계통을 선택하세요</p>
+        <div class="system-grid" id="system-grid"></div>
+    </div>
+
+    <!-- 퀴즈 -->
+    <div id="quiz-section" class="hidden">
+        <div id="current-system-label"></div>
+        <div id="progress"></div>
+        <h2 id="question"></h2>
+        <div id="options"></div>
+        <div id="feedback" style="margin-top:15px; font-weight:bold;"></div>
+        <div id="answer-img-wrap" style="text-align:center; margin-top:12px;"></div>
+        <button id="next-btn" class="btn hidden" onclick="loadNextQuestion()">다음 문제</button>
+    </div>
+
+    <!-- 결과 -->
+    <div id="result-section" class="hidden">
+        <h2>학습 완료</h2>
+        <p id="score-display"></p>
+        <div id="wrong-notes">
+            <h3>오답 정리 (국시 대비)</h3>
+            <div id="wrong-list"></div>
+        </div>
+        <button class="btn" onclick="showSystemSelect()">계통 선택으로</button>
+        <button class="btn btn-outline" style="margin-top:8px" onclick="restartCurrent()">같은 계통 다시</button>
+    </div>
+</div>
+
+<script>
+    const quizData = {
+
+        /* ───────────────────────────────────────────
+           1. 순환기계  (14문항)
+        ─────────────────────────────────────────── */
+        "순환기계": [
+            { q: "순환기 내과를 지칭하는 약어는?",
+              a: ["CV", "GS", "NS", "OS"], c: 0,
+              r: "CV는 Cardiovascular의 약자로, 심장과 혈관계 질환을 다루는 내과입니다." },
+            { q: "흉부외과(심장혈관흉부외과) 약어는?",
+              a: ["PS", "CS", "ENT", "EY"], c: 1,
+              r: "CS는 Chest Surgery의 약자로, 심장·폐·대혈관 수술을 담당합니다." },
+            { q: "심전도를 뜻하는 약어는?",
+              a: ["EEG", "EMG", "EKG", "ECHO"], c: 2,
+              r: "EKG(또는 ECG)는 Electrocardiogram의 약자로, 심장의 전기 활동을 기록합니다." },
+            { q: "급성 심근경색증 약어는?",
+              a: ["CHF", "AMI", "ASD", "VSD"], c: 1,
+              r: "AMI는 Acute Myocardial Infarction의 약자로, 관상동맥 폐색으로 심근이 괴사되는 응급 질환입니다." },
+            { q: "관상동맥 질환 약어는?",
+              a: ["CAD", "COPD", "CVA", "HTN"], c: 0,
+              r: "CAD는 Coronary Artery Disease의 약자로, 관상동맥 협착·폐색으로 인한 심장 질환입니다." },
+            { q: "심방세동 약어는?",
+              a: ["VF", "AF", "APC", "PVC"], c: 1,
+              r: "AF는 Atrial Fibrillation의 약자로, 심방이 불규칙하게 수축하는 부정맥입니다." },
+            { q: "관상동맥 우회술 약어는?",
+              a: ["PTCA", "CABG", "PCI", "ECHO"], c: 1,
+              r: "CABG는 Coronary Artery Bypass Graft의 약자로, 막힌 관상동맥을 우회하는 수술입니다." },
+            { q: "고혈압 약어는?",
+              a: ["DM", "HTN", "BP", "AR"], c: 1,
+              r: "HTN은 Hypertension의 약자로, 수축기 혈압 ≥140mmHg 또는 이완기 ≥90mmHg인 상태입니다." },
+            { q: "울혈성 심부전 약어는?",
+              a: ["CAD", "CHF", "AF", "HTN"], c: 1,
+              r: "CHF는 Congestive Heart Failure의 약자로, 심장이 충분한 혈액을 펌프하지 못해 체액이 울혈되는 상태입니다." },
+            { q: "경피적 관상동맥 중재술 약어는?",
+              a: ["CABG", "PTCA", "PCI", "AVR"], c: 2,
+              r: "PCI는 Percutaneous Coronary Intervention의 약자로, 카테터를 이용해 좁아진 관상동맥을 넓히는 시술입니다." },
+            { q: "심실세동 약어는?",
+              a: ["VF", "AF", "SVT", "PAC"], c: 0,
+              r: "VF는 Ventricular Fibrillation의 약자로, 심실이 불규칙하게 떨리는 치명적 부정맥입니다. 즉각적인 제세동이 필요합니다." },
+            { q: "심부정맥 혈전증 약어는?",
+              a: ["DVI", "DVT", "SVT", "PAD"], c: 1,
+              r: "DVT는 Deep Vein Thrombosis의 약자로, 주로 하지 심부정맥에 혈전이 형성되는 질환으로 폐색전증(PE)의 원인이 됩니다." },
+            { q: "자동제세동기 약어는?",
+              a: ["AED", "AIC", "DEF", "ADC"], c: 0,
+              r: "AED는 Automated External Defibrillator의 약자로, 심실세동 환자에게 전기 충격을 가해 정상 리듬을 회복시키는 장치입니다." },
+            { q: "심부전 진단 및 중증도 평가에 사용되는 나트륨 이뇨펩타이드 약어는?",
+              a: ["CK", "BNP", "Trop", "LDH"], c: 1,
+              r: "BNP는 B-type Natriuretic Peptide의 약자로, 심실 압력 상승 시 분비되며 심부전의 진단·모니터링에 사용됩니다." }
+        ],
+
+        /* ───────────────────────────────────────────
+           2. 호흡기계  (12문항)
+        ─────────────────────────────────────────── */
+        "호흡기계": [
+            { q: "만성 폐쇄성 폐질환 약어는?",
+              a: ["ARDS", "CHF", "TB", "COPD"], c: 3,
+              r: "COPD는 Chronic Obstructive Pulmonary Disease의 약자로, 기도가 점진적으로 좁아지는 만성 폐질환입니다." },
+            { q: "폐렴 약어는?",
+              a: ["PE", "PNA", "PPH", "PVD"], c: 1,
+              r: "PNA는 Pneumonia의 약자로, 폐포에 염증이 생기는 감염성 질환입니다." },
+            { q: "결핵 약어는?",
+              a: ["TB", "URI", "URTI", "HTN"], c: 0,
+              r: "TB는 Tuberculosis의 약자로, Mycobacterium tuberculosis에 의한 전염성 감염 질환입니다." },
+            { q: "급성 호흡 곤란 증후군 약어는?",
+              a: ["ARDS", "COPD", "PE", "ABG"], c: 0,
+              r: "ARDS는 Acute Respiratory Distress Syndrome의 약자로, 폐포 손상으로 인한 급성 저산소성 호흡부전입니다." },
+            { q: "폐색전증 약어는?",
+              a: ["PNA", "PTX", "PE", "PPH"], c: 2,
+              r: "PE는 Pulmonary Embolism의 약자로, 혈전이 폐동맥을 막아 발생하는 응급 질환입니다." },
+            { q: "동맥혈 가스 분석 약어는?",
+              a: ["CBC", "ABG", "LFT", "RFT"], c: 1,
+              r: "ABG는 Arterial Blood Gas의 약자로, 동맥혈의 pH·PaO2·PaCO2·HCO3을 측정하여 호흡 상태를 평가합니다." },
+            { q: "맥박산소측정기로 측정하는 말초 산소포화도 약어는?",
+              a: ["SaO2", "SpO2", "FiO2", "PaO2"], c: 1,
+              r: "SpO2는 맥박산소측정기(pulse oximetry)로 측정한 말초 산소포화도로, 정상은 95% 이상입니다." },
+            { q: "기계 환기 약어는?",
+              a: ["CPAP", "BiPAP", "MV", "IPPB"], c: 2,
+              r: "MV는 Mechanical Ventilation의 약자로, 자가 호흡이 불충분한 환자에게 기계로 환기를 보조하는 것입니다." },
+            { q: "기흉(폐허탈) 약어는?",
+              a: ["PTX", "PNA", "PE", "PTB"], c: 0,
+              r: "PTX는 Pneumothorax의 약자로, 흉막강 내 공기가 유입되어 폐가 허탈되는 상태입니다. 긴장성 기흉은 응급 처치가 필요합니다." },
+            { q: "지속적 기도양압 약어는?",
+              a: ["CPAP", "BiPAP", "PEEP", "IPPV"], c: 0,
+              r: "CPAP는 Continuous Positive Airway Pressure의 약자로, 지속적 양압으로 기도 허탈을 방지합니다. 수면 무호흡증·호흡부전에 사용됩니다." },
+            { q: "기관 내 삽관 튜브 약어는?",
+              a: ["ETT", "NGT", "CT", "OGT"], c: 0,
+              r: "ETT는 Endotracheal Tube의 약자로, 기도를 확보하기 위해 구강 또는 비강을 통해 기관 내로 삽입하는 튜브입니다." },
+            { q: "흡입 산소 농도를 나타내는 약어는?",
+              a: ["SaO2", "PaO2", "FiO2", "SpO2"], c: 2,
+              r: "FiO2는 Fraction of Inspired Oxygen의 약자로, 흡입 가스 중 산소 비율입니다. 실내 공기는 FiO2 0.21(21%)이며, 산소치료 시 높입니다." }
+        ],
+
+        /* ───────────────────────────────────────────
+           3. 소화기계  (12문항)
+        ─────────────────────────────────────────── */
+        "소화기계": [
+            { q: "금식(입으로 아무것도 먹지 않음) 약어는?",
+              a: ["TPN", "PO", "NPO", "NG"], c: 2,
+              r: "NPO는 라틴어 Nihil Per Os(= Nothing Per Os)의 약자로, 수술 전 또는 검사 전 금식 지시에 사용됩니다." },
+            { q: "완전 비경구 영양 약어는?",
+              a: ["TPN", "NG", "PO", "EN"], c: 0,
+              r: "TPN은 Total Parenteral Nutrition의 약자로, 정맥을 통해 모든 영양소를 공급하는 방법입니다." },
+            { q: "비위관 약어는?",
+              a: ["ET", "NG", "OG", "GT"], c: 1,
+              r: "NG는 Nasogastric의 약자로, 코를 통해 위까지 삽입하는 튜브입니다. 투약·영양공급·위 감압에 사용합니다." },
+            { q: "위식도 역류질환 약어는?",
+              a: ["IBD", "IBS", "GERD", "PUD"], c: 2,
+              r: "GERD는 Gastroesophageal Reflux Disease의 약자로, 위산이 식도로 역류하여 가슴쓰림 등을 유발하는 질환입니다." },
+            { q: "염증성 장질환 약어는?",
+              a: ["IBS", "IBD", "GERD", "PUD"], c: 1,
+              r: "IBD는 Inflammatory Bowel Disease의 약자로, 크론병(Crohn's disease)과 궤양성 대장염(UC)을 포함합니다." },
+            { q: "소화성 궤양 약어는?",
+              a: ["GERD", "IBD", "IBS", "PUD"], c: 3,
+              r: "PUD는 Peptic Ulcer Disease의 약자로, 위산에 의해 위·십이지장 점막에 궤양이 생기는 질환입니다." },
+            { q: "간기능 검사 약어는?",
+              a: ["LFT", "RFT", "TFT", "PFT"], c: 0,
+              r: "LFT는 Liver Function Test의 약자로, AST·ALT·ALP·빌리루빈 등을 측정하여 간 기능을 평가합니다." },
+            { q: "간경변 약어는?",
+              a: ["HBV", "HCV", "LC", "NASH"], c: 2,
+              r: "LC는 Liver Cirrhosis의 약자로, 만성 간 손상으로 정상 간 조직이 섬유조직으로 대체되어 간 기능이 저하되는 상태입니다." },
+            { q: "과민성 대장증후군 약어는?",
+              a: ["IBD", "IBS", "UC", "CD"], c: 1,
+              r: "IBS는 Irritable Bowel Syndrome의 약자로, 복통·복부팽만과 함께 설사 또는 변비가 반복되는 기능성 장질환입니다. IBD(염증성)와 구별합니다." },
+            { q: "B형 간염 바이러스 약어는?",
+              a: ["HAV", "HBV", "HCV", "HDV"], c: 1,
+              r: "HBV는 Hepatitis B Virus의 약자로, 혈액·체액으로 전파됩니다. 만성화 시 간경변·간암으로 진행할 수 있습니다." },
+            { q: "내시경적 역행성 담췌관 조영술 약어는?",
+              a: ["EGD", "ERCP", "MRCP", "ESWL"], c: 1,
+              r: "ERCP는 Endoscopic Retrograde Cholangiopancreatography의 약자로, 내시경을 이용해 담관·췌관을 촬영하고 담석 제거 등을 시행합니다." },
+            { q: "상부위장관 내시경 검사 약어는?",
+              a: ["EGD", "UGI", "GFS", "EUS"], c: 0,
+              r: "EGD는 Esophagogastroduodenoscopy의 약자로, 내시경을 통해 식도·위·십이지장을 직접 관찰하는 검사입니다." }
+        ],
+
+        /* ───────────────────────────────────────────
+           4. 비뇨기계  (12문항)
+        ─────────────────────────────────────────── */
+        "비뇨기계": [
+            { q: "요로 감염 약어는?",
+              a: ["ARF", "BPH", "STI", "UTI"], c: 3,
+              r: "UTI는 Urinary Tract Infection의 약자로, 방광·요도·신장 등 요로에 세균이 감염된 상태입니다." },
+            { q: "급성 신부전 약어는?",
+              a: ["ARF", "CRF", "UTI", "BPH"], c: 0,
+              r: "ARF는 Acute Renal Failure의 약자로, 신장 기능이 갑자기 저하되어 노폐물 배출이 안 되는 상태입니다." },
+            { q: "만성 신부전 약어는?",
+              a: ["ARF", "CRF", "ESRD", "HD"], c: 1,
+              r: "CRF는 Chronic Renal Failure의 약자로, 신장 기능이 수개월~수년에 걸쳐 점진적으로 저하되는 상태입니다." },
+            { q: "양성 전립선 비대증 약어는?",
+              a: ["UTI", "BPH", "PCN", "UC"], c: 1,
+              r: "BPH는 Benign Prostatic Hyperplasia의 약자로, 전립선이 비대해져 요도를 압박하여 배뇨 장애를 유발합니다." },
+            { q: "혈액 투석 약어는?",
+              a: ["PD", "HD", "CRRT", "KT"], c: 1,
+              r: "HD는 Hemodialysis의 약자로, 체외 투석기를 이용해 혈액에서 노폐물과 수분을 제거하는 신대체요법입니다." },
+            { q: "말기 신질환 약어는?",
+              a: ["CRF", "ARF", "AKI", "ESRD"], c: 3,
+              r: "ESRD는 End Stage Renal Disease의 약자로, 신장 기능이 정상의 15% 미만으로 저하되어 투석이나 이식이 필요한 단계입니다." },
+            { q: "사구체 여과율 약어는?",
+              a: ["BUN", "Cr", "GFR", "UA"], c: 2,
+              r: "GFR은 Glomerular Filtration Rate의 약자로, 신장이 단위 시간당 여과하는 혈액량으로 신기능 지표로 사용됩니다." },
+            { q: "소변 검사 약어는?",
+              a: ["UA", "UO", "BUN", "GFR"], c: 0,
+              r: "UA는 Urinalysis의 약자로, 색·혼탁도·pH·단백·당·혈뇨 등을 검사하여 신장 및 요로 질환을 평가합니다." },
+            { q: "혈중 요소 질소 약어는?",
+              a: ["BUN", "BSN", "CrN", "GFR"], c: 0,
+              r: "BUN은 Blood Urea Nitrogen의 약자로, 단백질 대사 산물인 요소의 혈중 농도입니다. 신장 기능 이상 시 상승합니다(정상 8~20 mg/dL)." },
+            { q: "신장 기능 평가에 사용되는 혈청 크레아티닌 약어는?",
+              a: ["Cl", "Cr", "Cu", "Ca"], c: 1,
+              r: "Cr은 Creatinine의 약자로, 근육 대사 산물로 신장에서만 여과·배설됩니다. 신기능 저하 시 혈청 Cr이 상승합니다(정상 0.6~1.2 mg/dL)." },
+            { q: "지속적 외래 복막 투석 약어는?",
+              a: ["CRRT", "CAPD", "CCPD", "HD"], c: 1,
+              r: "CAPD는 Continuous Ambulatory Peritoneal Dialysis의 약자로, 복막을 이용해 투석액을 교환하는 방식으로 외래에서도 시행 가능합니다." },
+            { q: "전립선암 선별 검사에 사용되는 종양 표지자 약어는?",
+              a: ["AFP", "PSA", "CEA", "CA19-9"], c: 1,
+              r: "PSA는 Prostate-Specific Antigen의 약자로, 전립선에서 분비되는 단백질입니다. 수치 상승 시 전립선암·전립선비대증 등을 의심합니다." }
+        ],
+
+        /* ───────────────────────────────────────────
+           5. 신경계  (12문항)
+        ─────────────────────────────────────────── */
+        "신경계": [
+            { q: "뇌혈관 사고(뇌졸중) 약어는?",
+              a: ["TIA", "ICP", "CVA", "LOC"], c: 2,
+              r: "CVA는 Cerebrovascular Accident의 약자로, 뇌혈관 폐색(허혈성) 또는 파열(출혈성)로 발생합니다." },
+            { q: "일과성 뇌허혈 발작 약어는?",
+              a: ["CVA", "TIA", "ICP", "MS"], c: 1,
+              r: "TIA는 Transient Ischemic Attack의 약자로, 24시간 이내에 완전히 회복되는 일시적 뇌허혈 증상입니다." },
+            { q: "두개내압 약어는?",
+              a: ["BP", "ICP", "CSF", "MAP"], c: 1,
+              r: "ICP는 Intracranial Pressure의 약자로, 두개골 내부의 압력이며 정상은 5~15mmHg입니다. 상승 시 뇌 손상 위험이 있습니다." },
+            { q: "글래스고 혼수 척도 약어는?",
+              a: ["LOC", "GCS", "NIHSS", "MRS"], c: 1,
+              r: "GCS는 Glasgow Coma Scale의 약자로, 개안·언어·운동 반응을 평가하여 의식 수준을 수치화합니다(3~15점)." },
+            { q: "의식 수준 약어는?",
+              a: ["LOC", "GCS", "ICP", "EEG"], c: 0,
+              r: "LOC는 Level of Consciousness의 약자로, 명료(alert)·기면(drowsy)·혼미(stupor)·혼수(coma) 등으로 분류됩니다." },
+            { q: "뇌전도(뇌파) 검사 약어는?",
+              a: ["EMG", "ECG", "EEG", "NCV"], c: 2,
+              r: "EEG는 Electroencephalogram의 약자로, 뇌의 전기 활동을 측정하여 간질·뇌사·수면 장애 등을 진단합니다." },
+            { q: "다발성 경화증 약어는?",
+              a: ["ALS", "MS", "MG", "GBS"], c: 1,
+              r: "MS는 Multiple Sclerosis의 약자로, 중추신경계 수초가 손상되는 자가면역 질환입니다." },
+            { q: "요추 천자 약어는?",
+              a: ["LP", "CT", "MRI", "EEG"], c: 0,
+              r: "LP는 Lumbar Puncture의 약자로, 허리 부위에서 뇌척수액(CSF)을 채취하여 수막염·지주막하출혈 등을 진단합니다." },
+            { q: "파킨슨병 약어는?",
+              a: ["PD", "AD", "MS", "ALS"], c: 0,
+              r: "PD는 Parkinson's Disease의 약자로, 도파민 신경세포 소실로 인해 진전(tremor)·경직·서동·자세불안정이 나타나는 퇴행성 신경 질환입니다." },
+            { q: "근위축성 측삭경화증(루게릭병) 약어는?",
+              a: ["MS", "MG", "ALS", "GBS"], c: 2,
+              r: "ALS는 Amyotrophic Lateral Sclerosis의 약자로, 상·하위 운동신경세포가 점차 소실되는 진행성 신경근육 질환입니다. 루게릭병으로도 불립니다." },
+            { q: "뇌척수액 약어는?",
+              a: ["CSF", "CBF", "CFS", "ECF"], c: 0,
+              r: "CSF는 Cerebrospinal Fluid의 약자로, 뇌와 척수를 둘러싸는 무색 투명한 액체입니다. LP로 채취하여 수막염 등을 진단합니다." },
+            { q: "중추신경계 약어는?",
+              a: ["PNS", "CNS", "ANS", "ENS"], c: 1,
+              r: "CNS는 Central Nervous System의 약자로, 뇌와 척수로 구성됩니다. 말초신경계(PNS)와 구별됩니다." }
+        ],
+
+        /* ───────────────────────────────────────────
+           6. 근골격계  (11문항)
+        ─────────────────────────────────────────── */
+        "근골격계": [
+            { q: "류마티스 관절염 약어는?",
+              a: ["OA", "RA", "AS", "SLE"], c: 1,
+              r: "RA는 Rheumatoid Arthritis의 약자로, 자가면역 기전으로 관절 활막에 염증이 생겨 관절 파괴를 일으키는 만성 질환입니다." },
+            { q: "골관절염 약어는?",
+              a: ["RA", "OA", "DJD", "AS"], c: 1,
+              r: "OA는 Osteoarthritis의 약자로, 관절 연골이 마모되어 통증·운동 제한이 발생하는 퇴행성 관절 질환입니다." },
+            { q: "골절 약어는?",
+              a: ["Dx", "Fx", "Tx", "Hx"], c: 1,
+              r: "Fx는 Fracture의 약자로, 뼈의 연속성이 파괴된 상태입니다." },
+            { q: "전고관절 치환술 약어는?",
+              a: ["TKR", "THR", "ACL", "ORIF"], c: 1,
+              r: "THR은 Total Hip Replacement의 약자로, 손상된 고관절을 인공 삽입물로 대체하는 수술입니다." },
+            { q: "전슬관절 치환술 약어는?",
+              a: ["THR", "TKR", "ACL", "ORIF"], c: 1,
+              r: "TKR은 Total Knee Replacement의 약자로, 손상된 무릎 관절을 인공 삽입물로 대체하는 수술입니다." },
+            { q: "관절 운동 범위 약어는?",
+              a: ["ADL", "ROM", "PT", "OT"], c: 1,
+              r: "ROM은 Range of Motion의 약자로, 관절이 움직일 수 있는 범위입니다. 능동(AROM)·수동(PROM)·보조(AAROM)로 구분합니다." },
+            { q: "물리치료 약어는?",
+              a: ["OT", "ST", "RT", "PT"], c: 3,
+              r: "PT는 Physical Therapy의 약자로, 운동·도수·물리적 자극을 통해 기능 회복을 돕는 치료입니다." },
+            { q: "전신홍반루푸스 약어는?",
+              a: ["RA", "SLE", "IBD", "MS"], c: 1,
+              r: "SLE는 Systemic Lupus Erythematosus의 약자로, 피부·관절·신장·심장 등 여러 장기를 침범하는 자가면역 질환입니다." },
+            { q: "관혈적 정복 내고정술 약어는?",
+              a: ["ORIF", "CRIF", "IM", "TKR"], c: 0,
+              r: "ORIF는 Open Reduction Internal Fixation의 약자로, 골절 부위를 절개하여 금속판·나사로 뼈를 고정하는 수술입니다." },
+            { q: "전방 십자인대 약어는?",
+              a: ["PCL", "MCL", "ACL", "LCL"], c: 2,
+              r: "ACL은 Anterior Cruciate Ligament의 약자로, 무릎 관절 내 전방 십자인대입니다. 스포츠 손상에서 흔히 파열됩니다." },
+            { q: "작업치료 약어는?",
+              a: ["PT", "OT", "ST", "RT"], c: 1,
+              r: "OT는 Occupational Therapy의 약자로, 일상생활 수행 능력을 회복하도록 돕는 치료입니다." }
+        ],
+
+        /* ───────────────────────────────────────────
+           7. 내분비계  (12문항)
+        ─────────────────────────────────────────── */
+        "내분비계": [
+            { q: "당뇨병 약어는?",
+              a: ["HTN", "DM", "TB", "CVA"], c: 1,
+              r: "DM은 Diabetes Mellitus의 약자로, 인슐린 분비 이상 또는 저항성으로 혈당이 높아지는 만성 질환입니다." },
+            { q: "당뇨병성 케톤산증 약어는?",
+              a: ["HHS", "DKA", "HONK", "DM"], c: 1,
+              r: "DKA는 Diabetic Ketoacidosis의 약자로, 인슐린 결핍으로 케톤체가 축적되어 산증이 발생하는 응급 상태(주로 제1형 당뇨)입니다." },
+            { q: "당화혈색소 약어는?",
+              a: ["FBS", "BS", "HbA1c", "GTT"], c: 2,
+              r: "HbA1c는 Glycated Hemoglobin의 약자로, 최근 2~3개월간의 평균 혈당 조절 상태를 반영합니다(정상 <5.7%)." },
+            { q: "갑상선 자극 호르몬 약어는?",
+              a: ["T3", "T4", "TSH", "PTH"], c: 2,
+              r: "TSH는 Thyroid Stimulating Hormone의 약자로, 뇌하수체 전엽에서 분비되어 갑상선 기능을 조절합니다." },
+            { q: "혈당 약어는?",
+              a: ["HbA1c", "GTT", "FBS", "BG"], c: 3,
+              r: "BG는 Blood Glucose의 약자로, 혈액 내 포도당 농도입니다. BS(Blood Sugar)와 혼용됩니다." },
+            { q: "갑상선 기능 저하증을 뜻하는 용어는?",
+              a: ["Hyperthyroidism", "Hypothyroidism", "Hyperparathyroidism", "Hypoparathyroidism"], c: 1,
+              r: "Hypothyroidism은 갑상선 호르몬이 부족한 상태로, 피로·체중 증가·변비·추위 불내성 등이 나타납니다." },
+            { q: "갑상선 기능 항진증을 뜻하는 용어는?",
+              a: ["Hypothyroidism", "Hyperthyroidism", "Hypoparathyroidism", "Hyperparathyroidism"], c: 1,
+              r: "Hyperthyroidism은 갑상선 호르몬이 과잉 분비되는 상태로, 체중 감소·빈맥·발한·손떨림 등이 나타납니다." },
+            { q: "항이뇨호르몬 분비이상증후군 약어는?",
+              a: ["DI", "SIADH", "ADH", "DKA"], c: 1,
+              r: "SIADH는 Syndrome of Inappropriate Antidiuretic Hormone의 약자로, ADH 과다 분비로 희석성 저나트륨혈증이 발생합니다." },
+            { q: "요붕증 약어는?",
+              a: ["DM", "DI", "DKA", "DH"], c: 1,
+              r: "DI는 Diabetes Insipidus의 약자로, ADH 분비 부족(중추성) 또는 신장 반응 이상(신성)으로 대량의 희석 소변이 배출되는 질환입니다." },
+            { q: "삼요오드티로닌(활성 갑상선 호르몬) 약어는?",
+              a: ["T1", "T2", "T3", "T4"], c: 2,
+              r: "T3는 Triiodothyronine(삼요오드티로닌)의 약자로, 갑상선에서 분비되는 활성 호르몬입니다. T4(Thyroxine)가 말초 조직에서 T3로 전환됩니다." },
+            { q: "공복 혈당 검사 약어는?",
+              a: ["RBS", "FBS", "PPBS", "GTT"], c: 1,
+              r: "FBS는 Fasting Blood Sugar의 약자로, 8시간 이상 금식 후 측정한 혈당입니다. 정상 100mg/dL 미만, 당뇨 진단 기준은 126mg/dL 이상입니다." },
+            { q: "경구 당부하 검사 약어는?",
+              a: ["FBS", "GTT", "OGTT", "RBS"], c: 2,
+              r: "OGTT는 Oral Glucose Tolerance Test의 약자로, 포도당 용액 복용 2시간 후 혈당을 측정합니다. 200mg/dL 이상 시 당뇨로 진단합니다." }
+        ],
+
+        /* ───────────────────────────────────────────
+           8. 혈액계  (11문항)
+        ─────────────────────────────────────────── */
+        "혈액계": [
+            { q: "전혈구 검사 약어는?",
+              a: ["BMP", "CMP", "CBC", "LFT"], c: 2,
+              r: "CBC는 Complete Blood Count의 약자로, 적혈구·백혈구·혈소판 수, 헤모글로빈, 헤마토크릿 등을 측정하는 기본 혈액 검사입니다." },
+            { q: "헤모글로빈(혈색소) 약어는?",
+              a: ["Hct", "Hb", "WBC", "PLT"], c: 1,
+              r: "Hb(또는 Hgb)는 Hemoglobin의 약자로, 적혈구 내 산소 운반 단백질입니다. 정상: 남 13~17, 여 12~15 g/dL." },
+            { q: "헤마토크릿 약어는?",
+              a: ["Hb", "Hct", "RBC", "MCV"], c: 1,
+              r: "Hct는 Hematocrit의 약자로, 전혈에서 적혈구가 차지하는 비율(%)입니다. 정상: 남 40~52%, 여 36~46%." },
+            { q: "백혈구 약어는?",
+              a: ["RBC", "PLT", "WBC", "Hb"], c: 2,
+              r: "WBC는 White Blood Cell의 약자로, 면역 기능을 담당합니다. 정상: 4,000~10,000/μL." },
+            { q: "적혈구 약어는?",
+              a: ["WBC", "PLT", "RBC", "Hct"], c: 2,
+              r: "RBC는 Red Blood Cell의 약자로, 헤모글로빈을 통해 산소를 운반합니다. 정상: 남 4.5~5.5, 여 4.0~5.0 × 10⁶/μL." },
+            { q: "파종성 혈관내 응고 약어는?",
+              a: ["PE", "DVT", "DIC", "HIT"], c: 2,
+              r: "DIC는 Disseminated Intravascular Coagulation의 약자로, 전신에 혈전과 출혈이 동시에 발생하는 응급 상태입니다." },
+            { q: "프로트롬빈 시간 약어는?",
+              a: ["aPTT", "PT", "INR", "TT"], c: 1,
+              r: "PT는 Prothrombin Time의 약자로, 외인성 응고 경로를 평가합니다. 와파린 치료 모니터링에 활용하며 INR로 표준화합니다." },
+            { q: "내인성 응고 경로를 평가하며 헤파린 치료 모니터링에 사용되는 검사 약어는?",
+              a: ["PT", "aPTT", "INR", "TT"], c: 1,
+              r: "aPTT는 Activated Partial Thromboplastin Time의 약자로, 내인성 응고 경로를 평가합니다. 헤파린 효과 모니터링에 사용합니다(정상 25~35초)." },
+            { q: "와파린 항응고 치료 모니터링에 사용되는 표준화 수치 약어는?",
+              a: ["PT", "aPTT", "INR", "ACT"], c: 2,
+              r: "INR은 International Normalized Ratio의 약자로, PT를 표준화한 수치입니다. 와파린 치료 목표 범위는 통상 2.0~3.0입니다." },
+            { q: "혈소판 약어는?",
+              a: ["PLT", "RBC", "WBC", "Hb"], c: 0,
+              r: "PLT는 Platelet의 약자로, 지혈에 관여하는 혈액 세포 성분입니다. 정상 150,000~400,000/μL이며, 감소 시 출혈 위험이 증가합니다." },
+            { q: "염증의 비특이적 지표인 적혈구 침강 속도 약어는?",
+              a: ["ESR", "CRP", "ANA", "AST"], c: 0,
+              r: "ESR은 Erythrocyte Sedimentation Rate의 약자로, 1시간 동안 적혈구가 침강하는 속도입니다. 염증·감염·자가면역질환 시 상승합니다." }
+        ],
+
+        /* ───────────────────────────────────────────
+           9. 기본간호/응급  (10문항)
+        ─────────────────────────────────────────── */
+        "기본간호/응급": [
+            { q: "활력징후 약어는?",
+              a: ["NVS", "V/S", "GCS", "ICP"], c: 1,
+              r: "V/S는 Vital Signs의 약자로, 체온(T)·맥박(P)·호흡(R)·혈압(BP)의 4가지를 기본으로 측정합니다." },
+            { q: "중환자실 약어는?",
+              a: ["CCU", "ICU", "RCU", "PCU"], c: 1,
+              r: "ICU는 Intensive Care Unit의 약자로, 중증 환자를 24시간 집중 모니터링·치료하는 병동입니다." },
+            { q: "심폐소생술 약어는?",
+              a: ["AED", "BLS", "CPR", "ACLS"], c: 2,
+              r: "CPR은 Cardiopulmonary Resuscitation의 약자로, 심정지 환자에게 흉부 압박과 인공호흡을 시행하는 응급처치입니다." },
+            { q: "소생술 금지 지시 약어는?",
+              a: ["DNR", "DND", "NFR", "DNH"], c: 0,
+              r: "DNR은 Do Not Resuscitate의 약자로, 환자 또는 법정 대리인이 심폐소생술을 원하지 않는다는 의사 결정입니다." },
+            { q: "투약 지시에서 '필요 시' 투약을 나타내는 약어는?",
+              a: ["STAT", "PRN", "QID", "SOS"], c: 1,
+              r: "PRN은 라틴어 Pro Re Nata의 약자로 '필요할 때'를 의미합니다. 일정 간격 없이 증상 발생 시에만 투약할 때 사용합니다." },
+            { q: "투약 또는 처치를 '즉시' 시행하도록 지시하는 약어는?",
+              a: ["NOW", "STAT", "ASAP", "PRN"], c: 1,
+              r: "STAT는 라틴어 Statim의 약자로 '즉시'를 의미합니다. 응급 상황에서 즉각적인 처치·투약이 필요할 때 사용합니다." },
+            { q: "정맥 내 주사 경로를 나타내는 약어는?",
+              a: ["IM", "IV", "SC", "SL"], c: 1,
+              r: "IV는 Intravenous의 약자로, 정맥에 직접 약물을 투여하는 경로입니다. 신속한 흡수와 정확한 용량 조절이 가능합니다." },
+            { q: "근육 내 주사 경로를 나타내는 약어는?",
+              a: ["IM", "IV", "SC", "ID"], c: 0,
+              r: "IM은 Intramuscular의 약자로, 근육 내에 약물을 주입하는 경로입니다. 대퇴근·둔근·삼각근이 일반적인 주사 부위입니다." },
+            { q: "피하 주사 경로를 나타내는 약어는?",
+              a: ["IM", "IV", "SC", "ID"], c: 2,
+              r: "SC(또는 SQ)는 Subcutaneous의 약자로, 진피 아래 피하 조직에 약물을 주입합니다. 인슐린·헤파린 투여에 주로 사용됩니다." },
+            { q: "경구(입으로 복용) 투약 경로를 나타내는 약어는?",
+              a: ["PO", "PR", "SL", "NG"], c: 0,
+              r: "PO는 라틴어 Per Os(= by mouth)의 약자로, 입으로 복용하는 가장 일반적인 투약 경로입니다." }
+        ]
+    };
+
+    let currentQuestions = [];
+    let currentSystemName = "";
+    let currentIdx = 0;
+    let score = 0;
+    let wrongAnswers = [];
+    let _lastQ = null;
+
+    function showSystemSelect() {
+        document.getElementById('system-section').classList.remove('hidden');
+        document.getElementById('quiz-section').classList.add('hidden');
+        document.getElementById('result-section').classList.add('hidden');
+    }
+
+    function buildSystemGrid() {
+        const grid = document.getElementById('system-grid');
+        grid.innerHTML = "";
+
+        Object.entries(quizData).forEach(([name, questions]) => {
+            const card = document.createElement('div');
+            card.className = 'system-card';
+            card.innerHTML = `<div class="sys-name">${name}</div><div class="sys-count">${questions.length}문제</div>`;
+            card.onclick = () => startQuiz(name, questions);
+            grid.appendChild(card);
+        });
+
+        // 전체 문제 카드
+        const allQuestions = Object.values(quizData).flat();
+        const allCard = document.createElement('div');
+        allCard.className = 'system-card system-card-all';
+        allCard.innerHTML = `<div class="sys-name">전체 문제</div><div class="sys-count">${allQuestions.length}문제</div>`;
+        allCard.onclick = () => startQuiz("전체", allQuestions);
+        grid.appendChild(allCard);
+    }
+
+    function startQuiz(systemName, questions) {
+        currentSystemName = systemName;
+        currentQuestions = [...questions];
+        currentIdx = 0;
+        score = 0;
+        wrongAnswers = [];
+
+        document.getElementById('system-section').classList.add('hidden');
+        document.getElementById('result-section').classList.add('hidden');
+        document.getElementById('quiz-section').classList.remove('hidden');
+        document.getElementById('current-system-label').innerText = `[ ${systemName} ]`;
+
+        loadNextQuestion();
+    }
+
+    function restartCurrent() {
+        startQuiz(currentSystemName, quizData[currentSystemName] || Object.values(quizData).flat());
+    }
+
+    function loadNextQuestion() {
+        if (currentIdx >= currentQuestions.length) {
+            showResults();
+            return;
+        }
+
+        const q = currentQuestions[currentIdx];
+        document.getElementById('progress').innerText = `문제 ${currentIdx + 1} / ${currentQuestions.length}`;
+        document.getElementById('question').innerText = q.q;
+        document.getElementById('feedback').innerText = "";
+        document.getElementById('answer-img-wrap').innerHTML = "";
+        document.getElementById('next-btn').classList.add('hidden');
+
+        const optionsDiv = document.getElementById('options');
+        optionsDiv.innerHTML = "";
+
+        q.a.forEach((opt, i) => {
+            const btn = document.createElement('button');
+            btn.className = 'option-btn';
+            btn.innerText = opt;
+            btn.onclick = () => checkAnswer(i);
+            optionsDiv.appendChild(btn);
+        });
+    }
+
+    function checkAnswer(selectedIdx) {
+        const q = currentQuestions[currentIdx];
+        _lastQ = q;
+        const buttons = document.querySelectorAll('.option-btn');
+
+        buttons.forEach(btn => btn.disabled = true);
+
+        if (selectedIdx === q.c) {
+            buttons[selectedIdx].classList.add('correct');
+            document.getElementById('feedback').innerHTML =
+                `<span style="color:var(--success-color)">정답입니다!</span><br>
+                 <small style="color:#555">${q.r}</small>`;
+            score++;
+        } else {
+            buttons[selectedIdx].classList.add('wrong');
+            buttons[q.c].classList.add('correct');
+            document.getElementById('feedback').innerHTML =
+                `<span style="color:var(--error-color)">오답입니다.</span><br>
+                 <small style="color:#555">${q.r}</small>`;
+            wrongAnswers.push({ q: q.q, correct: q.a[q.c], rationale: q.r });
+        }
+
+        document.getElementById('feedback').innerHTML +=
+            `<br><button class="btn-tts" onclick="speakAnswer()">🔊 발음 듣기</button>`;
+
+        loadAnswerImage(q);
+
+        document.getElementById('next-btn').classList.remove('hidden');
+        currentIdx++;
+    }
+
+    function speak(text) {
+        if (!window.speechSynthesis) return;
+        window.speechSynthesis.cancel();
+        const utter = new SpeechSynthesisUtterance(text);
+        utter.lang = 'en-US';
+        utter.rate = 0.85;
+        window.speechSynthesis.speak(utter);
+    }
+
+    function extractFullName(rationale) {
+        const match = rationale.match(/[는은]\s+([A-Za-z][A-Za-z\s\-\/]+?)(?=의\s*약자)/);
+        return match ? match[1].trim() : null;
+    }
+
+    // Wikipedia 문서명 매핑
+    const wikiPageMap = {
+        'Acute Myocardial Infarction':               'Myocardial_infarction',
+        'Coronary Artery Bypass Graft':              'Coronary_artery_bypass_surgery',
+        'Congestive Heart Failure':                  'Heart_failure',
+        'Percutaneous Coronary Intervention':        'Percutaneous_coronary_intervention',
+        'Cardiovascular':                            'Cardiovascular_disease',
+        'Chest Surgery':                             'Thoracic_surgery',
+        'Electrocardiogram':                         'Electrocardiography',
+        'Electroencephalogram':                      'Electroencephalography',
+        'B-type Natriuretic Peptide':               'Brain_natriuretic_peptide',
+        'Deep Vein Thrombosis':                      'Deep_vein_thrombosis',
+        'Automated External Defibrillator':          'Automated_external_defibrillator',
+        'Ventricular Fibrillation':                  'Ventricular_fibrillation',
+        'Chronic Obstructive Pulmonary Disease':     'Chronic_obstructive_pulmonary_disease',
+        'Acute Respiratory Distress Syndrome':       'Acute_respiratory_distress_syndrome',
+        'Arterial Blood Gas':                        'Arterial_blood_gas_test',
+        'Pneumothorax':                              'Pneumothorax',
+        'Continuous Positive Airway Pressure':       'Continuous_positive_airway_pressure',
+        'Endotracheal Tube':                         'Endotracheal_intubation',
+        'Fraction of Inspired Oxygen':               'Fraction_of_inspired_oxygen',
+        'Nasogastric':                               'Nasogastric_intubation',
+        'Nothing Per Os':                            null,
+        'Total Parenteral Nutrition':                'Parenteral_nutrition',
+        'Liver Cirrhosis':                           'Cirrhosis',
+        'Inflammatory Bowel Disease':                'Inflammatory_bowel_disease',
+        'Gastroesophageal Reflux Disease':           'Gastroesophageal_reflux_disease',
+        'Peptic Ulcer Disease':                      'Peptic_ulcer_disease',
+        'Irritable Bowel Syndrome':                  'Irritable_bowel_syndrome',
+        'Hepatitis B Virus':                         'Hepatitis_B',
+        'Endoscopic Retrograde Cholangiopancreatography': 'Endoscopic_retrograde_cholangiopancreatography',
+        'Esophagogastroduodenoscopy':                'Esophagogastroduodenoscopy',
+        'Acute Renal Failure':                       'Acute_kidney_injury',
+        'Chronic Renal Failure':                     'Chronic_kidney_disease',
+        'End Stage Renal Disease':                   'Chronic_kidney_disease',
+        'Glomerular Filtration Rate':                'Glomerular_filtration_rate',
+        'Blood Urea Nitrogen':                       'Blood_urea_nitrogen',
+        'Creatinine':                                'Creatinine',
+        'Continuous Ambulatory Peritoneal Dialysis': 'Peritoneal_dialysis',
+        'Prostate-Specific Antigen':                 'Prostate-specific_antigen',
+        'Cerebrovascular Accident':                  'Stroke',
+        'Glasgow Coma Scale':                        'Glasgow_coma_scale',
+        'Intracranial Pressure':                     'Intracranial_pressure',
+        'Amyotrophic Lateral Sclerosis':             'Amyotrophic_lateral_sclerosis',
+        'Cerebrospinal Fluid':                       'Cerebrospinal_fluid',
+        'Central Nervous System':                    'Central_nervous_system',
+        'Fracture':                                  'Bone_fracture',
+        'Total Hip Replacement':                     'Hip_replacement',
+        'Total Knee Replacement':                    'Knee_replacement',
+        'Range of Motion':                           'Range_of_motion',
+        'Systemic Lupus Erythematosus':              'Systemic_lupus_erythematosus',
+        'Open Reduction Internal Fixation':          'Open_reduction_internal_fixation',
+        'Anterior Cruciate Ligament':                'Anterior_cruciate_ligament',
+        'Occupational Therapy':                      'Occupational_therapy',
+        'Thyroid Stimulating Hormone':               'Thyroid-stimulating_hormone',
+        'Diabetes Mellitus':                         'Diabetes',
+        'Diabetic Ketoacidosis':                     'Diabetic_ketoacidosis',
+        'Diabetes Insipidus':                        'Diabetes_insipidus',
+        'Triiodothyronine':                          'Triiodothyronine',
+        'Fasting Blood Sugar':                       'Blood_sugar',
+        'Oral Glucose Tolerance Test':               'Glucose_tolerance_test',
+        'Disseminated Intravascular Coagulation':    'Disseminated_intravascular_coagulation',
+        'Activated Partial Thromboplastin Time':     'Partial_thromboplastin_time',
+        'International Normalized Ratio':            'International_normalized_ratio',
+        'Platelet':                                  'Platelet',
+        'Erythrocyte Sedimentation Rate':            'Erythrocyte_sedimentation_rate',
+        'Vital Signs':                               'Vital_signs',
+        'Intensive Care Unit':                       'Intensive_care_unit',
+        'Cardiopulmonary Resuscitation':             'Cardiopulmonary_resuscitation',
+        'Do Not Resuscitate':                        'Do_not_resuscitate',
+        'Intravenous':                               'Intravenous_therapy',
+        'Intramuscular':                             'Intramuscular_injection',
+        'Subcutaneous':                              'Subcutaneous_injection',
+        // 약어 직접 매핑
+        'SpO2':  'Pulse_oximetry',
+        'HbA1c': 'Glycated_hemoglobin',
+        'MV':    'Mechanical_ventilation',
+        'V/S':   null,
+        'BG':    'Blood_sugar',
+        'PRN':   'Pro_re_nata',
+        'STAT':  'STAT_(medicine)',
+        'PO':    'Oral_administration',
+        'IM':    'Intramuscular_injection',
+        'IV':    'Intravenous_therapy',
+        'SC':    'Subcutaneous_injection',
+        'DNR':   'Do_not_resuscitate',
+        'ICU':   'Intensive_care_unit',
+        'CPR':   'Cardiopulmonary_resuscitation',
+        'AED':   'Automated_external_defibrillator',
+    };
+
+    async function loadAnswerImage(q) {
+        const wrap = document.getElementById('answer-img-wrap');
+        const term = q.a[q.c];
+        const isAbbrev = /^[A-Z\/\d]{2,7}$/.test(term);
+        const lookup = isAbbrev ? (extractFullName(q.r) || term) : term;
+
+        if (!lookup) { wrap.innerHTML = ''; return; }
+
+        const hasMapped = Object.prototype.hasOwnProperty.call(wikiPageMap, lookup);
+        const wikiTitle = hasMapped ? wikiPageMap[lookup] : lookup.replace(/ /g, '_');
+
+        if (!wikiTitle) { wrap.innerHTML = ''; return; }
+
+        wrap.innerHTML = '<span style="color:#ccc; font-size:0.75rem;">이미지 불러오는 중…</span>';
+        try {
+            const resp = await fetch(
+                `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(wikiTitle)}`
+            );
+            if (!resp.ok) { wrap.innerHTML = ''; return; }
+            const data = await resp.json();
+            if (data.thumbnail) {
+                const src = data.thumbnail.source.replace(/\/\d+px-/, '/320px-');
+                wrap.innerHTML = `
+                    <img src="${src}" alt="${lookup}"
+                         style="max-width:100%; max-height:200px; border-radius:10px; border:1px solid #eee;"
+                         onerror="this.parentElement.innerHTML=''">
+                    <div style="font-size:0.72rem; color:#aaa; margin-top:4px;">
+                        📷 Wikimedia Commons / Wikipedia
+                    </div>`;
+            } else {
+                wrap.innerHTML = '';
+            }
+        } catch(e) {
+            wrap.innerHTML = '';
+        }
+    }
+
+    function speakAnswer() {
+        if (!_lastQ) return;
+        const term = _lastQ.a[_lastQ.c];
+        const fullName = extractFullName(_lastQ.r);
+        const termText = /^[A-Z]{2,6}$/.test(term) ? term.split('').join(' ') : term;
+        speak(fullName ? `${termText}. ${fullName}` : termText);
+    }
+
+    function showResults() {
+        document.getElementById('quiz-section').classList.add('hidden');
+        document.getElementById('result-section').classList.remove('hidden');
+        document.getElementById('score-display').innerText =
+            `[${currentSystemName}] ${currentQuestions.length}문제 중 ${score}문제를 맞혔습니다.`;
+
+        const wrongList = document.getElementById('wrong-list');
+        wrongList.innerHTML = "";
+
+        if (wrongAnswers.length === 0) {
+            wrongList.innerHTML = "<p>모든 문제를 맞히셨습니다! 완벽해요.</p>";
+        } else {
+            wrongAnswers.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'card';
+                div.style.textAlign = 'left';
+                div.innerHTML = `<strong>질문:</strong> ${item.q}<br>
+                                 <strong>정답:</strong> ${item.correct}<br>
+                                 <small style="color:blue">${item.rationale}</small>`;
+                wrongList.appendChild(div);
+            });
+        }
+    }
+
+    // 초기화
+    buildSystemGrid();
+</script>
+
+</body>
+</html>

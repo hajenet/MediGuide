@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>차트 읽어주는 AG - 순환기계편</title>
+    <style>
+        :root {
+            --ag-navy: #1a2a6c;
+            --ag-red: #b21f1f;
+            --ag-gold: #fdbb2d;
+            --light-bg: #f8f9fa;
+        }
+
+        body {
+            font-family: 'Pretendard', -apple-system, sans-serif;
+            background: var(--light-bg);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        #app {
+            width: 100%;
+            max-width: 480px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            overflow: hidden;
+            min-height: 90vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header */
+        header {
+            background: linear-gradient(135deg, var(--ag-navy), var(--ag-red));
+            color: white;
+            padding: 25px;
+            text-align: center;
+        }
+
+        header h1 { margin: 0; font-size: 22px; letter-spacing: -1px; }
+        header p { margin: 5px 0 0; font-size: 14px; opacity: 0.8; }
+
+        /* Navigation */
+        nav {
+            display: flex;
+            background: #eee;
+            padding: 5px;
+        }
+
+        nav button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            background: none;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 10px;
+            transition: 0.3s;
+        }
+
+        nav button.active {
+            background: white;
+            color: var(--ag-navy);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .content { padding: 20px; flex: 1; }
+        .hidden { display: none; }
+
+        /* 학습 페이지 (Flash Cards) */
+        .study-card {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 15px;
+            padding: 30px 20px;
+            text-align: center;
+            margin-bottom: 20px;
+            min-height: 150px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+
+        .study-card .term { font-size: 32px; font-weight: 800; color: var(--ag-navy); margin-bottom: 10px; }
+        .study-card .desc { font-size: 18px; color: #555; display: none; }
+        .study-card .full-name { font-size: 14px; color: #888; margin-top: 6px; display: none; }
+        .study-card .pron { font-size: 13px; color: var(--ag-red); margin-top: 4px; display: none; font-style: italic; }
+        .study-card.flipped .desc { display: block; }
+        .study-card.flipped .full-name { display: block; }
+        .study-card.flipped .pron { display: block; }
+        .study-card.flipped .hint { display: none; }
+        .hint { font-size: 12px; color: #aaa; margin-top: 10px; }
+
+        /* 퀴즈 페이지 */
+        .quiz-option {
+            width: 100%;
+            padding: 15px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 12px;
+            background: white;
+            text-align: left;
+            cursor: pointer;
+            font-size: 16px;
+            transition: 0.2s;
+        }
+
+        .quiz-option:hover { background: #f0f4ff; }
+        .correct { background: #d4edda !important; border-color: #28a745 !important; color: #155724; }
+        .wrong { background: #f8d7da !important; border-color: #dc3545 !important; color: #721c24; }
+
+        .btn-main {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 12px;
+            background: var(--ag-navy);
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        /* 오답노트 */
+        .wrong-item {
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+            font-size: 14px;
+        }
+
+        .wrong-item strong { color: var(--ag-red); }
+    </style>
+</head>
+<body>
+
+<div id="app">
+    <header>
+        <h1>차트 읽어주는 AG</h1>
+        <p>순환기계(심장/혈관) 마스터 과정</p>
+    </header>
+
+    <nav>
+        <button id="tab-study" class="active" onclick="switchTab('study')">📖 학습하기</button>
+        <button id="tab-quiz" onclick="switchTab('quiz')">✍️ 시험보기</button>
+    </nav>
+
+    <div id="page-study" class="content">
+        <div id="flash-card" class="study-card" onclick="this.classList.toggle('flipped')">
+            <div class="term" id="study-term">로딩중...</div>
+            <div class="desc" id="study-desc">설명이 여기에 표시됩니다.</div>
+            <div class="full-name" id="study-full"></div>
+            <div class="pron" id="study-pron"></div>
+            <div class="hint">카드를 터치하면 뜻이 보입니다.</div>
+        </div>
+        <div style="display:flex; gap:10px;">
+            <button class="btn-main" style="background:#666;" onclick="prevStudy()">이전</button>
+            <button class="btn-main" onclick="nextStudy()">다음 단어</button>
+        </div>
+        <p style="text-align:center; color:#888; font-size:12px; margin-top:15px;">
+            총 <span id="study-count">0</span>개의 핵심 용어 학습 중
+        </p>
+    </div>
+
+    <div id="page-quiz" class="content hidden">
+        <div id="quiz-container">
+            <div id="quiz-progress" style="font-size:12px; color:#666; margin-bottom:10px;"></div>
+            <h2 id="quiz-question" style="font-size:18px; margin-bottom:20px;">질문</h2>
+            <div id="quiz-options"></div>
+            <div id="quiz-feedback" style="margin-top:15px; font-weight:bold; text-align:center;"></div>
+            <button id="btn-next-quiz" class="btn-main hidden" onclick="nextQuiz()">다음 문제</button>
+        </div>
+        
+        <div id="quiz-result" class="hidden">
+            <h2 style="text-align:center;">학습 결과</h2>
+            <div id="result-score" style="font-size:40px; text-align:center; color:var(--ag-navy); font-weight:bold; margin:20px 0;">0점</div>
+            <div id="wrong-note-area">
+                <h3 style="font-size:16px; border-left:4px solid var(--ag-red); padding-left:10px;">오답노트</h3>
+                <div id="wrong-list"></div>
+            </div>
+            <button class="btn-main" onclick="resetQuiz()">다시 도전하기</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // 데이터 정의
+    const medicalData = [
+        { term: "CV",  desc: "순환기 내과",   full: "Cardiovascular",                    pron: "카디오배스큘러",           hint: "심장과 혈관을 다루는 과" },
+        { term: "CS",  desc: "흉부외과",      full: "Chest Surgery",                     pron: "체스트 서저리",            hint: "가슴 부위 수술 전문" },
+        { term: "EKG", desc: "심전도 검사",   full: "Electrocardiogram",                 pron: "일렉트로카디오그램",        hint: "심장의 전기 신호를 기록" },
+        { term: "AMI", desc: "급성 심근경색증", full: "Acute Myocardial Infarction",     pron: "어큐트 마이오카디얼 인팍션", hint: "심장 근육이 갑자기 죽는 병" },
+        { term: "CAD", desc: "관상동맥 질환", full: "Coronary Artery Disease",           pron: "코로나리 아터리 디지즈",    hint: "심장 혈관이 좁아지는 병" },
+        { term: "AF",  desc: "심방세동",      full: "Atrial Fibrillation",               pron: "에이트리얼 피브릴레이션",   hint: "심장이 불규칙하게 떨리는 부정맥" },
+        { term: "HTN", desc: "고혈압",        full: "Hypertension",                      pron: "하이퍼텐션",               hint: "혈압이 정상보다 높은 상태" },
+        { term: "CHF", desc: "울혈성 심부전", full: "Congestive Heart Failure",          pron: "콩제스티브 하트 페일리어",  hint: "심장 기능 저하로 피가 정체됨" }
+    ];
+
+    let studyIdx = 0;
+    let quizIdx = 0;
+    let score = 0;
+    let wrongs = [];
+
+    // 탭 전환
+    function switchTab(type) {
+        document.querySelectorAll('.content').forEach(c => c.classList.add('hidden'));
+        document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+        
+        if(type === 'study') {
+            document.getElementById('page-study').classList.remove('hidden');
+            document.getElementById('tab-study').classList.add('active');
+            updateStudyCard();
+        } else {
+            document.getElementById('page-quiz').classList.remove('hidden');
+            document.getElementById('tab-quiz').classList.add('active');
+            resetQuiz();
+        }
+    }
+
+    // 학습 로직
+    function updateStudyCard() {
+        const item = medicalData[studyIdx];
+        document.getElementById('flash-card').classList.remove('flipped');
+        document.getElementById('study-term').innerText = item.term;
+        document.getElementById('study-desc').innerText = item.desc;
+        document.getElementById('study-full').innerText = item.full;
+        document.getElementById('study-pron').innerText = '[ ' + item.pron + ' ]';
+        document.getElementById('study-count').innerText = `${studyIdx + 1} / ${medicalData.length}`;
+    }
+
+    function nextStudy() {
+        studyIdx = (studyIdx + 1) % medicalData.length;
+        updateStudyCard();
+    }
+
+    function prevStudy() {
+        studyIdx = (studyIdx - 1 + medicalData.length) % medicalData.length;
+        updateStudyCard();
+    }
+
+    // 퀴즈 로직
+    function resetQuiz() {
+        quizIdx = 0;
+        score = 0;
+        wrongs = [];
+        document.getElementById('quiz-container').classList.remove('hidden');
+        document.getElementById('quiz-result').classList.add('hidden');
+        loadQuiz();
+    }
+
+    function loadQuiz() {
+        const q = medicalData[quizIdx];
+        document.getElementById('quiz-progress').innerText = `Question ${quizIdx + 1} of ${medicalData.length}`;
+        document.getElementById('quiz-question').innerText = `"${q.term}"은(는) 무엇을 뜻하나요?`;
+        document.getElementById('quiz-feedback').innerText = "";
+        document.getElementById('btn-next-quiz').classList.add('hidden');
+
+        // 옵션 생성 (정답 1 + 오답 2 랜덤 추출)
+        let options = [q.desc];
+        while(options.length < 3) {
+            let randomDesc = medicalData[Math.floor(Math.random()*medicalData.length)].desc;
+            if(!options.includes(randomDesc)) options.push(randomDesc);
+        }
+        options.sort(() => Math.random() - 0.5);
+
+        const optionsDiv = document.getElementById('quiz-options');
+        optionsDiv.innerHTML = "";
+        options.forEach(opt => {
+            const btn = document.createElement('button');
+            btn.className = 'quiz-option';
+            btn.innerText = opt;
+            btn.onclick = () => checkQuiz(opt, q.desc, btn);
+            optionsDiv.appendChild(btn);
+        });
+    }
+
+    function checkQuiz(selected, correct, btn) {
+        const allBtns = document.querySelectorAll('.quiz-option');
+        allBtns.forEach(b => b.disabled = true);
+
+        if(selected === correct) {
+            btn.classList.add('correct');
+            document.getElementById('quiz-feedback').innerText = "정답입니다! 🎉";
+            score += Math.round(100 / medicalData.length);
+        } else {
+            btn.classList.add('wrong');
+            document.getElementById('quiz-feedback').innerText = "아쉬워요! 😢";
+            wrongs.push({term: medicalData[quizIdx].term, correct: correct});
+            // 정답 표시
+            allBtns.forEach(b => { if(b.innerText === correct) b.classList.add('correct'); });
+        }
+        document.getElementById('btn-next-quiz').classList.remove('hidden');
+    }
+
+    function nextQuiz() {
+        quizIdx++;
+        if(quizIdx < medicalData.length) {
+            loadQuiz();
+        } else {
+            showResult();
+        }
+    }
+
+    function showResult() {
+        document.getElementById('quiz-container').classList.add('hidden');
+        document.getElementById('quiz-result').classList.remove('hidden');
+        document.getElementById('result-score').innerText = (quizIdx === score/ (100/medicalData.length)) ? "100점!" : score + "점";
+        
+        const listDiv = document.getElementById('wrong-list');
+        listDiv.innerHTML = wrongs.length === 0 ? "<p>틀린 문제가 없습니다. 완벽해요!</p>" : "";
+        wrongs.forEach(w => {
+            listDiv.innerHTML += `<div class="wrong-item"><strong>${w.term}</strong>: ${w.correct}</div>`;
+        });
+    }
+
+    // 초기 실행
+    updateStudyCard();
+</script>
+
+</body>
+</html>
