@@ -1,4 +1,4 @@
-# MediGuide
+﻿# MediGuide
 
 `index.html` 하나로 구성된 클라이언트 전용 간호/의학 약어 퀴즈 앱입니다. 비밀번호 입력 화면을 거친 뒤 퀴즈를 풀고, 마지막에 점수와 오답 노트를 보여주는 구조입니다.
 
@@ -101,3 +101,14 @@ if (savedPw === "" || inputPw === savedPw) {
 5. 퀴즈 데이터와 앱 로직 분리
 6. 문제 랜덤화, 진행률 표시 개선, 다시 시작 로직 개선
 
+## GitHub Pages 배포
+
+`.github/workflows/pages.yml` 워크플로가 `master` 브랜치에 push될 때 정적 사이트를 GitHub Pages로 배포합니다.
+
+GitHub 저장소 설정에서 `Settings > Pages > Build and deployment > Source`를 `GitHub Actions`로 설정해야 합니다.
+
+배포 후 주요 페이지:
+
+- `/index.html`: 현재 퀴즈 앱
+- `/plans.html`: 버전별 로드맵과 무료/유료 등급 안내
+- `/MARKETING.md`: 글로벌 마케팅 및 수익화 계획
